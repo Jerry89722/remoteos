@@ -1,19 +1,14 @@
-# from django.db import models
-# from django.contrib.auth.models import AbstractUser
-#
-# from db.basemodel import BaseModel
-#
-#
-# class User(AbstractUser, BaseModel):
-#     # def generate_active_token(self):
-#     #     """ 生成用户签名字符串 """exit
-#
-#     #     serializer = Serializer(settings.SECRET_KEY, 3600)
-#     #     info = {'confirm': self.id}
-#     #     token = serializer.dumps(info)
-#     #     return token.decode()
-#
-#     class Meta:
-#         db_table = 'df_user'
-#         verbose_name = '用户'
-#         verbose_name_plural = verbose_name
+from django.db import models
+from django.contrib.auth.models import AbstractUser
+
+from db.basemodel import BaseModel
+
+
+class User(AbstractUser, BaseModel):
+    phone = models.CharField(max_length=20, verbose_name="手机号")
+    is_admin = models.BooleanField(default=False, verbose_name="管理员标记")
+
+    class Meta:
+        db_table = 'ros_user'
+        verbose_name = '用户'
+        verbose_name_plural = verbose_name

@@ -47,7 +47,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -89,7 +89,7 @@ DATABASES = {
 }
 
 # 指定django认证系统使用的模型类
-# AUTH_USER_MODEL = 'user.User'
+AUTH_USER_MODEL = 'user.User'
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
@@ -126,7 +126,39 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
-
 STATIC_URL = '/static/'
 
+# 邮件配置
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# smtp service address and port
+EMAIL_HOST = 'smtp.163.com'
+EMAIL_PORT = 25
+# sender's address
+EMAIL_HOST_USER = 'zhangjie89722@163.com'
+# email's author code
+EMAIL_HOST_PASSWORD = 'python89722'
+# 收件人看到的发件人信息
+EMAIL_FROM = '张洁<zhangjie89722@163.com>'
+
 DISKPATH = "/media/zjay/Datas/"
+
+DEVICE_UUID = "toshiba"
+
+PUBLIC_DOMAIN = "huiwanit.cn"
+
+# Django cache settings
+CACHES = {
+    'default': {
+        'BACKEND': "django_redis.cache.RedisCache",
+        'LOCATION': "redis://127.0.0.1:6379/2",
+        'OPTIONS': {
+            'CLIENT_CLASS': "django_redis.client.DefaultClient",
+            }
+        }
+    }
+
+# config sessions store
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = 'default'
+
+LOGIN_URL = "/user/login"

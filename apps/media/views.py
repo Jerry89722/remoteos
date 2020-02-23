@@ -23,20 +23,28 @@ def verbose_output_clear():
 
 def cmd_str_construct(func):
     def _deco(act, *args):
-        print("before func() called.")
+        # print("before func() called.")
 
         # [clear, pause, status, get_time, get_length, ...]
-        cmd_str = act
+        cmd_str = ""
 
-        if len(args) >= 0:
+        if len(args) > 0:
             # [add, seek, ...]
             if act == 'add':
                 cmd_str = 'add ' + args[0]
-            elif act == 'seek' and len(args) == 1:
+            elif act == 'seek':
                 cmd_str = 'seek ' + args[0]
+            elif act == 'volume':
+                cmd_str = 'volume ' + args[0]
+            elif act == 'volup':
+                cmd_str = 'volup ' + args[0]
+            elif act == 'voldown':
+                cmd_str = 'voldown ' + args[0]
+        else:
+            cmd_str = act
 
         ret_str = func(cmd_str)
-        print("after func() called.")
+        # print("after func() called.")
         # 不需要返回func，实际上应返回原函数的返回值
         return ret_str
     return _deco
@@ -87,6 +95,7 @@ def status_get():
     verbose_output_clear()
     status_dict['cur_time'] = vlc_cmd_request('get_time').strip('\r\n')
     status_dict['total_time'] = vlc_cmd_request('get_length').strip('\r\n')
+    status_dict['volume'] = vlc_cmd_request('volume').strip('\r\n')
     return status_dict
 
 
@@ -113,9 +122,36 @@ def tv_play(tv_id):
     return {'total_time': '2735', 'cur_time': '166', 'uuid': '74f85634ec754c5a96d66925b486af7f', 'status': 'playing'}
 
 
-def play_ctrl():
+def play_ctrl(act: str):
     # pause
-    vlc_cmd_request('pause')
+    if act == "stop":
+        action = act
+    else:
+        action = "pause"
+
+    vlc_cmd_request(action)
+
+    return status_get()
+
+
+def volume_ctrl(vol):
+    vol_int = vol
+    if vol > 0:
+        cur_vol = vlc_cmd_request("volume").strip('\r\n')
+        print("cur vol: {}-".format(cur_vol))
+        if cur_vol == "0":
+            vlc_cmd_request("volume", "1")
+
+        act = "volup"
+    elif vol < 0:
+        act = "voldown"
+    else:
+        act = "volume"
+
+    vol_str = str(abs(vol_int))
+
+    vlc_cmd_request(act, vol_str)
+
     return status_get()
 
 
@@ -128,7 +164,17 @@ def play_handle(request):
     elif tv_id is not None:
         res_dict = tv_play(tv_id)
     else:
-        res_dict = play_ctrl()
+        res_dict = play_ctrl("pause")
+    return res_dict
+
+
+def volume_handle(request):
+    res_dict = {}
+
+    volume = request.GET.get('volume')
+    if volume is not None:
+        vol = int(volume)
+        res_dict = volume_ctrl(vol)
     return res_dict
 
 
@@ -148,7 +194,10 @@ def seek_handle(request):
 
 def stop_handle(request):
     print(sys._getframe().f_code.co_name)
-    pass
+
+    res_dict = play_ctrl("stop")
+
+    return res_dict
 
 
 def socket_init():
@@ -171,6 +220,7 @@ def action_init():
     g_media_act['status'] = status_handle
     g_media_act['seek'] = seek_handle
     g_media_act['stop'] = stop_handle
+    g_media_act['volume'] = volume_handle
 
 
 def media_init():

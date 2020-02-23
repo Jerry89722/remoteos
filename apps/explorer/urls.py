@@ -13,10 +13,10 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-
+from django.contrib.auth.decorators import login_required
 from django.urls import path
 from explorer.views import FileView
 
 urlpatterns = [
-    path('', FileView.as_view(), name='file'),
+    path('', login_required(FileView.as_view()), name='file'),
 ]

@@ -20,4 +20,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('explorer/', include(('explorer.urls', 'explorer'), namespace='explorer')),
     path('media/', include(('media.urls', 'media'), namespace='media')),
+    path('user/', include(('user.urls', 'user'), namespace='user')),
 ]
