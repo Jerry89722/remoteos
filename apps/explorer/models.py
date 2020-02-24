@@ -12,4 +12,7 @@ class TvChannels(BaseModel):
     class Meta:
         db_table = 'ros_channels'
         verbose_name = 'channel'
-        verbose_name_plural = 'channels'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return self.channel_name
