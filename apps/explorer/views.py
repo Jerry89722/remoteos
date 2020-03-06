@@ -1,8 +1,8 @@
 import json
-import logging
 import os
 
 from django.http import HttpResponse
+from django.shortcuts import redirect
 from explorer.models import TvChannels
 
 # Create your views here.
@@ -10,33 +10,39 @@ from django.views.generic.base import View
 import filetype
 
 # from apps.explorer.models import TvChannels
+from utils.simulatebrowser import SimulateBrowser
 
 
 def file_list_get(file_type, full_path):
     result = list()
+    type_list = file_type.split('/')
+    # print("type list: ", type_list)
     for name in os.listdir(full_path):
         item = dict()
         item_path = full_path + name
         print("--------------", item_path)
+
         if os.path.isdir(item_path):
             item['type'] = 'dir'
+            item['name'] = name
+            item['fingerprint'] = item_path
         else:
-
             ftype = filetype.guess(item_path)
-
             if ftype is None:
-                item['type'] = 'file'
+                continue
+
+            ft = ftype.mime.split('/')[0]
+            if file_type == 'all' or ft in type_list:
+                item['type'] = ft
+                item['name'] = name
+                item['fingerprint'] = item_path
             else:
-                type_src = ftype.mime
-                if type_src.find('video') == 0:
-                    item['type'] = 'video'
-                elif type_src.find('audio'):
-                    item['type'] = 'audio'
-                else:
-                    item['type'] = 'file'
+                item['type'] = ft
+                item['name'] = name
+                item['fingerprint'] = item_path
+
             item['size'] = str(os.path.getsize(item_path))
-        item['name'] = name
-        print("item", name)
+
         result.append(item)
     return result
 
@@ -53,8 +59,10 @@ def tv_list_get():
     for channel in channel_list:
         channel_dict = dict()
         channel_dict["name"] = channel.channel_name
+        channel_dict["fingerprint"] = channel.channel_id
         channel_dict["id"] = channel.channel_id
         channel_dict["type"] = "tv"
+        channel_dict["size"] = "0"
         channels.append(channel_dict)
 
     return channels
@@ -62,16 +70,11 @@ def tv_list_get():
 
 def list_handle(request):
     file_type = request.GET.get('type')
-    file_path = request.GET.get('path')
-    if file_path is None:
-        res_list = None
-    elif file_path == 'internet':
-        if file_type == 'tv':
-            res_list = tv_list_get()
-        else:
-            res_list = online_video_list_get()
+    file_path = request.GET.get('fingerprint')
+
+    if file_type == 'tv':
+        res_list = tv_list_get()
     else:
-        # local path
         full_path = "/media/zjay/Datas" + file_path
         print("explorer full path: ", full_path)
         res_list = file_list_get(file_type, full_path)
@@ -83,14 +86,19 @@ def rm_handle():
     pass
 
 
-def explorer_action_init():
-    global g_explorer_act
-    g_explorer_act['list'] = list_handle
-    g_explorer_act['rm'] = rm_handle
+def explorer_env_init():
+    print("explorer env init")
+    global g_explorer_act, sim
+    if sim is None:
+        g_explorer_act['list'] = list_handle
+        g_explorer_act['rm'] = rm_handle
+        sim = SimulateBrowser()
 
 
+sim = None
 g_explorer_act = dict()
-explorer_action_init()
+
+explorer_env_init()
 
 
 class FileView(View):
@@ -99,7 +107,6 @@ class FileView(View):
         global g_explorer_act
         uuid = request.GET.get('uuid')
         action = request.GET.get('action')
-
         res_list = g_explorer_act[action](request)
 
         response_dict = {'uuid': uuid, 'list': res_list}
@@ -133,3 +140,17 @@ class VideoView(View):
     def post(self, request):
         pass
 
+
+class InternetView(View):
+    def get(self, request):
+        global sim
+        response_dict = sim.request_work_start(request.GET)
+        print("internet task response: ", response_dict)
+        if 'link' in response_dict:
+            print("internet video url: ", response_dict['link'])
+            return redirect("/media?action=play&type=internet&fingerprint={}".format(response_dict['link']))
+
+        return HttpResponse(json.dumps(response_dict))
+
+    def post(self, request):
+        pass

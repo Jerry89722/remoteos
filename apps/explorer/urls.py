@@ -15,8 +15,10 @@ Including another URLconf
 """
 from django.contrib.auth.decorators import login_required
 from django.urls import path
-from explorer.views import FileView
+from explorer.views import FileView, InternetView
 
 urlpatterns = [
-    path('', login_required(FileView.as_view()), name='file'),
+    path('files/', FileView.as_view(), name='file'),
+    path('tv/', FileView.as_view(), name='file'),
+    path('internet/', InternetView.as_view(), name='internet'),
 ]

@@ -140,7 +140,9 @@ EMAIL_HOST_PASSWORD = 'python89722'
 # 收件人看到的发件人信息
 EMAIL_FROM = '张洁<zhangjie89722@163.com>'
 
-DISKPATH = "/media/zjay/Datas/"
+VLC_SOCK_PATH = "/home/zjay/vlc.sock"
+
+DISK_PATH = "/media/zjay/Datas"
 
 DEVICE_UUID = "toshiba"
 

@@ -6,7 +6,7 @@ from db.basemodel import BaseModel
 
 class TvChannels(BaseModel):
     channel_name = models.CharField(max_length=20, verbose_name='频道名称')
-    channel_id = models.IntegerField(verbose_name='频道号')
+    channel_id = models.IntegerField(unique=True, verbose_name='频道号')
     channel_url = models.CharField(max_length=512, verbose_name='频道地址')
 
     class Meta:
