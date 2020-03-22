@@ -2,11 +2,8 @@ import json
 
 from django.contrib.auth import authenticate, login
 from django.http import HttpResponse
-
-# Create your views here.
 from django.views.generic.base import View
 from itsdangerous import TimedJSONWebSignatureSerializer as TJSS, SignatureExpired
-
 from user.models import User
 from celery_tasks import tasks
 from remoteos import settings

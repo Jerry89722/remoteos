@@ -1,16 +1,17 @@
 import json
 import os
+import filetype
 
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from explorer.models import TvChannels
-
-# Create your views here.
 from django.views.generic.base import View
-import filetype
+from explorer.niuniutv import NiuNiuTvSpider
+from remoteos.settings import DISK_PATH
 
-# from apps.explorer.models import TvChannels
-from utils.simulatebrowser import SimulateBrowser
+
+def real_path_get(vpath):
+    return DISK_PATH + vpath
 
 
 def file_list_get(file_type, full_path):
@@ -19,13 +20,13 @@ def file_list_get(file_type, full_path):
     # print("type list: ", type_list)
     for name in os.listdir(full_path):
         item = dict()
-        item_path = full_path + name
+        item_path = full_path + "/" + name
         print("--------------", item_path)
 
         if os.path.isdir(item_path):
             item['type'] = 'dir'
             item['name'] = name
-            item['fingerprint'] = item_path
+            item['fingerprint'] = item_path.replace(DISK_PATH, "", 1)
         else:
             ftype = filetype.guess(item_path)
             if ftype is None:
@@ -35,11 +36,11 @@ def file_list_get(file_type, full_path):
             if file_type == 'all' or ft in type_list:
                 item['type'] = ft
                 item['name'] = name
-                item['fingerprint'] = item_path
+                item['fingerprint'] = item_path.replace(DISK_PATH, "", 1)
             else:
                 item['type'] = ft
                 item['name'] = name
-                item['fingerprint'] = item_path
+                item['fingerprint'] = item_path.replace(DISK_PATH, "", 1)
 
             item['size'] = str(os.path.getsize(item_path))
 
@@ -59,7 +60,7 @@ def tv_list_get():
     for channel in channel_list:
         channel_dict = dict()
         channel_dict["name"] = channel.channel_name
-        channel_dict["fingerprint"] = channel.channel_id
+        channel_dict["fingerprint"] = str(channel.channel_id)
         channel_dict["id"] = channel.channel_id
         channel_dict["type"] = "tv"
         channel_dict["size"] = "0"
@@ -75,7 +76,7 @@ def list_handle(request):
     if file_type == 'tv':
         res_list = tv_list_get()
     else:
-        full_path = "/media/zjay/Datas" + file_path
+        full_path = DISK_PATH + ("" if file_path == "/" else file_path)
         print("explorer full path: ", full_path)
         res_list = file_list_get(file_type, full_path)
 
@@ -92,7 +93,7 @@ def explorer_env_init():
     if sim is None:
         g_explorer_act['list'] = list_handle
         g_explorer_act['rm'] = rm_handle
-        sim = SimulateBrowser()
+        # sim = SimulateBrowser()
 
 
 sim = None
@@ -142,6 +143,7 @@ class VideoView(View):
 
 
 class InternetView(View):
+    """
     def get(self, request):
         global sim
         response_dict = sim.request_work_start(request.GET)
@@ -154,3 +156,22 @@ class InternetView(View):
 
     def post(self, request):
         pass
+    """
+
+    def get(self, request):
+        # searcher = SuyingSpider()
+        searcher = NiuNiuTvSpider()
+        response_dict = searcher.request_work_start(request.GET)
+        if 'link' in response_dict:
+            print("internet video url: ", response_dict['link'])
+            return redirect("/media?action=play&type=internet&name={}&fingerprint={}".format(response_dict['name'], response_dict['link']))
+
+        return HttpResponse(json.dumps(response_dict))
+
+
+
+
+
+
+
+

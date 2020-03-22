@@ -19,6 +19,7 @@ from explorer.views import FileView, InternetView
 
 urlpatterns = [
     path('files/', FileView.as_view(), name='file'),
+    path('video/', FileView.as_view(), name='file'),
     path('tv/', FileView.as_view(), name='file'),
     path('internet/', InternetView.as_view(), name='internet'),
 ]

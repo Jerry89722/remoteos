@@ -28,7 +28,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -73,7 +72,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'remoteos.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
 
@@ -109,7 +107,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/2.1/topics/i18n/
 
@@ -122,7 +119,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
@@ -155,12 +151,28 @@ CACHES = {
         'LOCATION': "redis://127.0.0.1:6379/2",
         'OPTIONS': {
             'CLIENT_CLASS': "django_redis.client.DefaultClient",
-            }
         }
     }
+}
 
 # config sessions store
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = 'default'
 
 LOGIN_URL = "/user/login"
+
+# ############################################################
+# 网络视频搜索相关配置
+ONLINE_VIDEO_REQUEST_HEADER = {
+    "User-Agent": "Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Mobile Safari/537.36",
+}
+
+# 速影
+# ONLINE_VIDEO_BASE_URL = "https://xn--94qq85au3qyvbe13c.xyz"
+# ONLINE_VIDEO_SEARCH_URL = "/index.php?m=vod-search"
+
+# 牛牛TV
+ONLINE_VIDEO_BASE_URL = "http://ziliao6.com"
+ONLINE_VIDEO_SEARCH_URL = "/tv/api.php?do={}&v={}"
+# ###########################################################
+

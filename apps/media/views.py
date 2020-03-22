@@ -1,22 +1,15 @@
 import json
 import os
-import re
 import socket
-
-# Create your views here.
-import struct
 import sys
 import threading
 
 from django.core.cache import cache
 from django.http import HttpResponse
 from django.views.generic.base import View
-
-# from celery_tasks import tasks
 from explorer.models import TvChannels
-
-from apps.explorer.views import file_list_get
-from remoteos.settings import VLC_SOCK_PATH
+from explorer.views import file_list_get, real_path_get
+from remoteos.settings import VLC_SOCK_PATH, DISK_PATH
 
 g_sock = None
 g_sock_lock = None
@@ -106,18 +99,20 @@ def get_volume():
 
 
 def get_title():
-    path = vlc_cmd_request('status').strip('\r\n')
-    from urllib import parse
-    path = parse.unquote(path)
-    if path.find("file://") == 0:
-        title = path[path.rfind('/') + 1:]
-    elif path.find("http") == 0 and path.rfind("m3u8") > 0:
-        des_channel = TvChannels.objects.filter(channel_url=path)[0]
-        title = des_channel.channel_name
-    else:
-        title = vlc_cmd_request('get_title').strip('\r\n')
-
-    print("path", path)
+    # path = vlc_cmd_request('status').strip('\r\n')
+    # from urllib import parse
+    # path = parse.unquote(path)
+    # if path.find("file://") == 0:
+    #     title = path[path.rfind('/') + 1:]
+    # elif path.find("http") == 0 and path.rfind("m3u8") > 0:
+    #     des_channel = TvChannels.objects.filter(channel_url=path)[0]
+    #     title = des_channel.channel_name
+    # else:
+    #     title = vlc_cmd_request('get_title').strip('\r\n')
+    #
+    # print("path", path)
+    playing_info = cache.get("player_status_cache")
+    title = playing_info['name']
     print("title", title)
     return title
 
@@ -181,7 +176,7 @@ def media_switch(mtype, full_path):
 
     media_list = file_list_get('video', file_tuple[0]+'/')
     for media in media_list:
-        vlc_cmd_request('enqueue', media['fingerprint'])
+        vlc_cmd_request('enqueue', real_path_get(media['fingerprint']))
 
     media_play(file_tuple[1])
 
@@ -224,15 +219,19 @@ def play_handle(request):
         if media_type == 'tv':
             chan = TvChannels.objects.filter(channel_id=full_path)[0]
             full_path = chan.channel_url
+        elif media_type == 'video' or media_type == 'audio':
+            full_path = DISK_PATH + full_path
 
         media_switch(media_type, full_path)
         player_status_cache = {'path': full_path, 'type': media_type}
         if media_type == 'tv':
             player_status_cache['name'] = chan.channel_name
+        elif media_type == 'internet':
+            player_status_cache['name'] = request.GET.get('name')
         else:
             player_status_cache['name'] = full_path[full_path.rfind('/')+1:]
 
-        cache.set("player_status_cache", player_status_cache)
+        cache.set("player_status_cache", player_status_cache, timeout=(24*3600))
     else:
         # 暂停/播放当前任务
         if get_status() == 'stop':
