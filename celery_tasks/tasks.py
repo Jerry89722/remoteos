@@ -14,8 +14,11 @@ from remoteos import settings
 from django.core.mail import send_mail
 from remoteos.settings import DEVICE_UUID, PUBLIC_DOMAIN
 
+isCelery = False
+
 if os.environ.get('DJANGO_SETTINGS_MODULE') is None:
     import django
+    isCelery = True
     print(os.environ.get('DJANGO_SETTINGS_MODULE'))
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'remoteos.settings')
     print(os.environ.get('DJANGO_SETTINGS_MODULE'))

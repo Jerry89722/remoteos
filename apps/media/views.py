@@ -9,6 +9,8 @@ from django.http import HttpResponse
 from django.views.generic.base import View
 from explorer.models import TvChannels
 from explorer.views import file_list_get, real_path_get
+
+from celery_tasks.tasks import isCelery
 from remoteos.settings import VLC_SOCK_PATH, DISK_PATH
 
 g_sock = None
@@ -164,6 +166,7 @@ def media_play(media_name):
 def media_switch(mtype, full_path):
     if get_status() == 'pause':
         vlc_cmd_request('pause')
+    vlc_cmd_request('stop')
     vlc_cmd_request('clear')
     if mtype == 'tv':
         vlc_cmd_request('add', full_path)
@@ -309,7 +312,9 @@ def media_init():
     action_init()
 
 
-media_init()
+if isCelery is False:
+    print("---------- media init ----------")
+    media_init()
 
 
 # name, location, type

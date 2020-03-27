@@ -53,7 +53,7 @@ def online_video_list_get():
 
 
 def tv_list_get():
-    channel_list = TvChannels.objects.all()
+    channel_list = TvChannels.objects.all().order_by('channel_id')
     print("channel_list type: ", type(channel_list))
     print("channel_list: ", channel_list)
     channels = []
@@ -162,6 +162,11 @@ class InternetView(View):
         # searcher = SuyingSpider()
         searcher = NiuNiuTvSpider()
         response_dict = searcher.request_work_start(request.GET)
+        if response_dict is None:
+            response = HttpResponse()
+            response.status_code = 404
+            response.content = "无结果"
+            return response
         if 'link' in response_dict:
             print("internet video url: ", response_dict['link'])
             return redirect("/media?action=play&type=internet&name={}&fingerprint={}".format(response_dict['name'], response_dict['link']))

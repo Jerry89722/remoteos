@@ -1,3 +1,4 @@
+import collections
 import json
 
 from django.core.cache import cache
@@ -11,8 +12,11 @@ class NiuNiuTvSpider(BaseSpider):
     def search_infos_extract(self, search_result):
         # result = search_result.text
         print("search result: ", search_result)
-        response_dict = json.loads(search_result)
+        response_dict = json.loads(search_result, object_pairs_hook=collections.OrderedDict)
+        if response_dict['status'] != 200:
+            return None
         resource_dict = response_dict['res']
+        # resource_dict = response_dict['res']
         print("resouce dict: \n", resource_dict)
 
         result_dict = {"titles": [], "hrefs": []}
@@ -38,7 +42,9 @@ class NiuNiuTvSpider(BaseSpider):
 
     def playlist_infos_extract(self, playlist_result):
         # result = playlist_result.text
-        response_dict = json.loads(playlist_result)
+        print("-----------------: \n", playlist_result)
+        response_dict = json.loads(playlist_result, object_pairs_hook=collections.OrderedDict)
+        # resource_dict = response_dict['res']
         resource_dict = response_dict['res']
         print("resource dict: ", resource_dict)
         # 分集标题
