@@ -12,6 +12,7 @@ from explorer.views import file_list_get, real_path_get
 
 from celery_tasks.tasks import isCelery
 from remoteos.settings import VLC_SOCK_PATH, DISK_PATH
+from utils.socketmanager.unixsocketmanager import UnixSocketManager
 
 g_sock = None
 g_sock_lock = None
@@ -297,14 +298,16 @@ def socket_init():
     global g_sock_lock
     print("socket_init start")
     g_sock_lock = threading.Lock()
-    try:
-        g_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        g_sock.connect(VLC_SOCK_PATH)
-        # val = struct.pack("QQ", 0, 10 * 1000)
-        # g_sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVTIMEO, val)
-        print("socket init ok")
-    except socket.error as msg:
-        print("unix socket create failed", msg)
+    g_sock = UnixSocketManager()
+
+    # try:
+    #     g_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    #     g_sock.connect(VLC_SOCK_PATH)
+    #     # val = struct.pack("QQ", 0, 10 * 1000)
+    #     # g_sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVTIMEO, val)
+    #     print("socket init ok")
+    # except socket.error as msg:
+    #     print("unix socket create failed", msg)
 
 
 def media_init():

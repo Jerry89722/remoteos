@@ -136,7 +136,9 @@ EMAIL_HOST_PASSWORD = 'python89722'
 # 收件人看到的发件人信息
 EMAIL_FROM = '张洁<zhangjie89722@163.com>'
 
-VLC_SOCK_PATH = "/home/zjay/vlc.sock"
+VLC_CACHE_PATH = "/home/zjay/.vlc-cache/"
+VLC_SOCK_FILE = "vlc.sock"
+VLC_SOCK_PATH = VLC_CACHE_PATH + VLC_SOCK_FILE
 
 DISK_PATH = "/media/zjay/Datas"
 
