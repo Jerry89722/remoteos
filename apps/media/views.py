@@ -5,9 +5,10 @@ import sys
 import threading
 
 from django.core.cache import cache
+from django.db.models import Q
 from django.http import HttpResponse
 from django.views.generic.base import View
-from explorer.models import TvChannels
+from explorer.models import TvChannels, Favourite
 from explorer.views import file_list_get, real_path_get
 
 from celery_tasks.tasks import isCelery
@@ -19,25 +20,16 @@ g_sock_lock = None
 g_media_act = dict()
 
 
+class MediaItem:
+    def __init__(self, title, url):
+        self.title = title
+        self.url = url
+
+
 def cmd_str_construct(func):
     def _deco(act, *args):
-        # [clear, pause, status, get_time, get_length, ...]
-        cmd_str = ""
-
         if len(args) > 0:
-            # [add, seek, ...]
-            if act == 'add':
-                cmd_str = 'add ' + args[0]
-            elif act == 'seek':
-                cmd_str = 'seek ' + args[0]
-            elif act == 'volume':
-                cmd_str = 'volume ' + args[0]
-            elif act == 'volup':
-                cmd_str = 'volup ' + args[0]
-            elif act == 'voldown':
-                cmd_str = 'voldown ' + args[0]
-            else:
-                cmd_str = act + " " + args[0]
+            cmd_str = act + " " + args[0]
         else:
             cmd_str = act
 
@@ -59,10 +51,13 @@ def vlc_cmd_request(cmd: str, *args):
     except socket.error as msg:
         print(msg)
 
-    print("sent: ", temp)
+    print("vlc cmd[{}]".format(cmd))
+
     resp = ""
     try:
+        print("recv waiting ...")
         resp = g_sock.recv(1024).decode()
+        print("recv done.")
     except BlockingIOError as msg:
         print("blocking io error: ", msg)
     g_sock_lock.release()
@@ -102,18 +97,6 @@ def get_volume():
 
 
 def get_title():
-    # path = vlc_cmd_request('status').strip('\r\n')
-    # from urllib import parse
-    # path = parse.unquote(path)
-    # if path.find("file://") == 0:
-    #     title = path[path.rfind('/') + 1:]
-    # elif path.find("http") == 0 and path.rfind("m3u8") > 0:
-    #     des_channel = TvChannels.objects.filter(channel_url=path)[0]
-    #     title = des_channel.channel_name
-    # else:
-    #     title = vlc_cmd_request('get_title').strip('\r\n')
-    #
-    # print("path", path)
     playing_info = cache.get("player_status_cache")
     title = playing_info['name']
     print("title", title)
@@ -122,16 +105,10 @@ def get_title():
 
 def all_status_get():
     status_dict = dict()
-    verbose_output_clear()
+    # verbose_output_clear()
     status_dict['status'] = get_status()
-    if status_dict['status'] == 'stop':
-        player_status_dict = cache.get('player_status_cache')
-        if player_status_dict is not None:
-            status_dict['name'] = player_status_dict.get('name')
-        else:
-            status_dict['name'] = ""
-    else:
-        status_dict["name"] = get_title()
+
+    status_dict["name"] = get_title()
 
     status_dict['cur_time'] = get_time()
     status_dict['total_time'] = get_length()
@@ -153,23 +130,15 @@ def media_play(media_name):
     vlc_cmd_request('goto', str(inx+1))
 
 
-# if res is None:
-    #     print("play list: \n", playlist)
-    #     print("media name: ", media_name)
-    # else:
-    #     inx = res.group(1)
-    #
-    #     print("play index: ", inx)
-    #
-    #     vlc_cmd_request('goto', inx)
-
-
 def media_switch(mtype, full_path):
     if get_status() == 'pause':
         vlc_cmd_request('pause')
     vlc_cmd_request('stop')
     vlc_cmd_request('clear')
     if mtype == 'tv':
+        vlc_cmd_request('add', full_path)
+        return
+    if mtype == 'favor':
         vlc_cmd_request('add', full_path)
         return
     if mtype == 'internet':
@@ -186,10 +155,13 @@ def media_switch(mtype, full_path):
 
 
 def play_ctrl():
-    # pause
-    vlc_cmd_request('pause')
-
-    return all_status_get()
+    status = get_status()
+    if status == "stop":
+        vlc_cmd_request('play')
+    elif status == 'pause':
+        vlc_cmd_request('pause')
+    else:
+        vlc_cmd_request('pause')
 
 
 def volume_ctrl(vol):
@@ -213,38 +185,89 @@ def volume_ctrl(vol):
     return all_status_get()
 
 
+def do_play(item):
+    if item is None:
+        # 播放第一首
+        pass
+    else:
+        playlist = cache.get('playlist')
+        print('get playlist: ', playlist)
+        print("cur_item: ", item)
+        index = playlist['url'].index(item['url'])
+        vlc_cmd_request('goto', str(index + 1))
+
+        cache.set("player_status_cache", {
+            'name': playlist['title'][index],
+            'path': playlist['url'][index],
+            'type': playlist['type']
+        }, timeout=(24 * 3600))
+
+
+def playlist_update(media_type, fingerprint, name=None):
+    playlist = {
+        'type': 'tv',
+        'title': [],
+        'url': []
+    }
+
+    item_list = []
+    cur_item = {
+        "title": None,
+        "url": None
+    }
+    if media_type == 'tv':
+        cur_item = TvChannels.objects.filter(item_number=fingerprint)[0]
+        cur_item = {
+            'title': cur_item.title,
+            'url': cur_item.url
+        }
+        item_list = TvChannels.objects.all()
+    elif media_type == 'video' or media_type == 'audio':
+        cur_url = DISK_PATH + fingerprint
+        cur_item = {
+            'title': fingerprint.split('/')[-1],
+            'url': cur_url
+        }
+        item_list = [MediaItem(fingerprint.split('/')[-1], cur_url)]
+    elif media_type == 'favor':
+        cur_item = Favourite.objects.filter(id=fingerprint)[0]
+        cur_item = {
+            'title': cur_item.title,
+            'url': cur_item.url
+        }
+        # db_items = Favourite.objects.filter(~Q(id=full_path))
+        item_list = Favourite.objects.all()
+    elif media_type == 'internet':
+        cur_item = {'title': name, 'url': fingerprint}
+        item_list = [MediaItem(name, fingerprint)]
+
+    vlc_cmd_request("stop")
+    vlc_cmd_request("clear")
+
+    for item in item_list:
+        print("title: ", item.title)
+        print("url: ", item.url)
+        playlist['title'].append(item.title)
+        playlist['url'].append(item.url)
+        vlc_cmd_request("enqueue", item.url)
+    print("full playlist: ", playlist)
+    cache.set('playlist', playlist, timeout=(24*3600))
+
+    return cur_item
+
+
 def play_handle(request):
     media_type = request.GET.get('type')
-    full_path = request.GET.get('fingerprint')
-    print("media type: ", media_type)
-    print("full path: ", full_path)
-    if all([full_path, media_type]):
-        chan = None
-        if media_type == 'tv':
-            chan = TvChannels.objects.filter(channel_id=full_path)[0]
-            full_path = chan.channel_url
-        elif media_type == 'video' or media_type == 'audio':
-            full_path = DISK_PATH + full_path
+    fingerprint = request.GET.get('fingerprint')
+    name = request.GET.get('name')
 
-        media_switch(media_type, full_path)
-        player_status_cache = {'path': full_path, 'type': media_type}
-        if media_type == 'tv':
-            player_status_cache['name'] = chan.channel_name
-        elif media_type == 'internet':
-            player_status_cache['name'] = request.GET.get('name')
-        else:
-            player_status_cache['name'] = full_path[full_path.rfind('/')+1:]
-
-        cache.set("player_status_cache", player_status_cache, timeout=(24*3600))
-    else:
-        # 暂停/播放当前任务
-        if get_status() == 'stop':
-            player_status_dict = cache.get("player_status_cache")
-            if player_status_dict is not None:
-                if player_status_dict.get('path') is not None:
-                    media_switch(player_status_dict['type'], player_status_dict['path'])
-
+    if fingerprint is None:
+        # 仅切换播放/暂停状态
         play_ctrl()
+    else:
+        # 播放新节目
+        cur = playlist_update(media_type, fingerprint, name)
+        do_play(cur)
 
     return all_status_get()
 
@@ -283,6 +306,30 @@ def stop_handle(request):
     return all_status_get()
 
 
+def next_handle(request):
+    status = get_status()
+    if status == 'pause':
+        vlc_cmd_request('pause')
+    vlc_cmd_request('next')
+    print("next handle")
+    vlc_cmd_request('playlist')
+    return all_status_get()
+
+
+def prev_handle(request):
+    status = get_status()
+    if status == 'pause':
+        vlc_cmd_request('pause')
+    vlc_cmd_request('prev')
+    print("prev handle")
+    return all_status_get()
+
+
+def random_handle(request):
+    vlc_cmd_request('random', request.GET.get('onoff'))
+    return all_status_get()
+
+
 def action_init():
     print("action_init start")
     global g_media_act
@@ -291,6 +338,9 @@ def action_init():
     g_media_act['seek'] = seek_handle
     g_media_act['stop'] = stop_handle
     g_media_act['volume'] = volume_handle
+    g_media_act['next'] = next_handle
+    g_media_act['prev'] = prev_handle
+    g_media_act['random'] = random_handle
 
 
 def socket_init():
@@ -299,15 +349,6 @@ def socket_init():
     print("socket_init start")
     g_sock_lock = threading.Lock()
     g_sock = UnixSocketManager()
-
-    # try:
-    #     g_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    #     g_sock.connect(VLC_SOCK_PATH)
-    #     # val = struct.pack("QQ", 0, 10 * 1000)
-    #     # g_sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVTIMEO, val)
-    #     print("socket init ok")
-    # except socket.error as msg:
-    #     print("unix socket create failed", msg)
 
 
 def media_init():
@@ -330,7 +371,6 @@ class MediaView(View):
         global g_media_act
         uuid = request.GET.get('uuid')
         action = request.GET.get('action')
-
         res_dict = g_media_act[action](request)
 
         res_dict['uuid'] = uuid

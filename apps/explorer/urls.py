@@ -15,11 +15,13 @@ Including another URLconf
 """
 from django.contrib.auth.decorators import login_required
 from django.urls import path
-from explorer.views import FileView, InternetView
+from explorer.views import FileView, InternetView, OnlineMusicView, OnlineFavorView
 
 urlpatterns = [
     path('files/', FileView.as_view(), name='file'),
     path('video/', FileView.as_view(), name='file'),
     path('tv/', FileView.as_view(), name='file'),
+    path('online_music/', OnlineMusicView.as_view(), name='online_music'),
     path('internet/', InternetView.as_view(), name='internet'),
+    path('favor/', OnlineFavorView.as_view(), name='favor'),
 ]

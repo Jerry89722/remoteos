@@ -4,10 +4,14 @@ import filetype
 
 from django.http import HttpResponse
 from django.shortcuts import redirect
-from explorer.models import TvChannels
 from django.views.generic.base import View
+
+from explorer.models import TvChannels, Favourite
 from explorer.niuniutv import NiuNiuTvSpider
+from explorer.musicsearch import MusicSearchSpider
+
 from remoteos.settings import DISK_PATH
+from utils.searchbase import SearchBase
 
 
 def real_path_get(vpath):
@@ -53,15 +57,15 @@ def online_video_list_get():
 
 
 def tv_list_get():
-    channel_list = TvChannels.objects.all().order_by('channel_id')
+    channel_list = TvChannels.objects.all().order_by('item_number')
     print("channel_list type: ", type(channel_list))
     print("channel_list: ", channel_list)
     channels = []
     for channel in channel_list:
         channel_dict = dict()
-        channel_dict["name"] = channel.channel_name
-        channel_dict["fingerprint"] = str(channel.channel_id)
-        channel_dict["id"] = channel.channel_id
+        channel_dict["name"] = channel.title
+        channel_dict["fingerprint"] = str(channel.item_number)
+        channel_dict["id"] = channel.item_number
         channel_dict["type"] = "tv"
         channel_dict["size"] = "0"
         channels.append(channel_dict)
@@ -174,9 +178,44 @@ class InternetView(View):
         return HttpResponse(json.dumps(response_dict))
 
 
+class OnlineMusicView(View):
+    def get(self, request):
+        searcher = MusicSearchSpider()
+        response_dict = searcher.request_work_start(request.GET)
+        if response_dict is None:
+            response = HttpResponse()
+            response.status_code = 404
+            response.content = "无结果"
+            return response
+
+        if 'link' in response_dict:
+            return redirect("/media?action=play&type=internet&name={}&fingerprint={}".format(response_dict['name'], response_dict['link']))
+
+        return HttpResponse(json.dumps(response_dict))
 
 
+class OnlineFavorView(View):
+    def get(self, request):
+        if request.GET.get('action') == "favor":
+            SearchBase.favor(request.GET)
+            return HttpResponse("{}")
+        elif request.GET.get('action') == "list":
+            favor_list = self.favourite_list()
+            favor_dict = {"uuid": request.GET.get('uuid'), "list": favor_list}
+            return HttpResponse(json.dumps(favor_dict))
 
+    def favourite_list(self):
+        favor_list = Favourite.objects.all().order_by('id')
 
-
+        favors = []
+        for favor in favor_list:
+            favor_dict = dict()
+            favor_dict["name"] = favor.title
+            favor_dict["fingerprint"] = str(favor.id)
+            favor_dict["id"] = favor.id
+            favor_dict["type"] = "favor"
+            favor_dict["size"] = "0"
+            favors.append(favor_dict)
+        print("favors: ", favors)
+        return favors
 
