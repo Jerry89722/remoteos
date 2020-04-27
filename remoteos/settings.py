@@ -140,6 +140,9 @@ VLC_CACHE_PATH = "/home/zjay/.vlc-cache/"
 VLC_SOCK_FILE = "vlc.sock"
 VLC_SOCK_PATH = VLC_CACHE_PATH + VLC_SOCK_FILE
 
+VLC_PLAYING_FILE = "playing_index"
+VLC_PLAYING_PATH = VLC_CACHE_PATH + VLC_PLAYING_FILE
+
 DISK_PATH = "/media/zjay/Datas"
 
 DEVICE_UUID = "toshiba"

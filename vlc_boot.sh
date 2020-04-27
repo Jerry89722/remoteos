@@ -10,7 +10,7 @@
 # TODO , 用于控制此系统的运行, 目前还没做好, 无法正常使用
 start(){
   echo "vlc start"
-	/home/zjay/usr/local/vlc/bin/vlc -I oldrc --rc-unix=/home/zjay/.vlc-cache/vlc.sock -f --network-caching 50000
+	/home/zjay/usr/local/vlc/bin/vlc -I oldrc --rc-unix=/home/zjay/.vlc-cache/vlc.sock -f --network-caching 50000 -L
 }
 
 stop(){

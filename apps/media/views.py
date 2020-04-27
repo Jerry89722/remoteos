@@ -3,6 +3,7 @@ import os
 import socket
 import sys
 import threading
+import time
 
 from django.core.cache import cache
 from django.db.models import Q
@@ -12,7 +13,7 @@ from explorer.models import TvChannels, Favourite
 from explorer.views import file_list_get, real_path_get
 
 from celery_tasks.tasks import isCelery
-from remoteos.settings import VLC_SOCK_PATH, DISK_PATH
+from remoteos.settings import VLC_SOCK_PATH, DISK_PATH, VLC_PLAYING_PATH
 from utils.socketmanager.unixsocketmanager import UnixSocketManager
 
 g_sock = None
@@ -97,9 +98,12 @@ def get_volume():
 
 
 def get_title():
-    playing_info = cache.get("player_status_cache")
-    title = playing_info['name']
-    print("title", title)
+    playlist = cache.get('playlist')
+    time.sleep(0.1)
+    with open(VLC_PLAYING_PATH, 'r') as fp:
+        ret = fp.read()
+    title = playlist['title'][int(ret)]
+    print("current item: ", title)
     return title
 
 
@@ -195,12 +199,6 @@ def do_play(item):
         print("cur_item: ", item)
         index = playlist['url'].index(item['url'])
         vlc_cmd_request('goto', str(index + 1))
-
-        cache.set("player_status_cache", {
-            'name': playlist['title'][index],
-            'path': playlist['url'][index],
-            'type': playlist['type']
-        }, timeout=(24 * 3600))
 
 
 def playlist_update(media_type, fingerprint, name=None):
